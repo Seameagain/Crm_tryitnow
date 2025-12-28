@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - จัดการคะแนน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        * { font-family: 'Prompt', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f5f5f5; }
+        
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            color: white;
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 18px;
+            text-align: center;
+            background: #f8f9fa;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 1em;
+            color: #555;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            background: #4CAF50;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 25px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .input-group {
+            margin-bottom: 25px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            margin-bottom: 15px;
+            transition: border 0.3s;
+        }
+        
+        input:focus, select:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .success {
+            background: #E8F5E9;
+            color: #2E7D32;
+            border: 1px solid #C8E6C9;
+            display: block;
+        }
+        
+        .error {
+            background: #FFEBEE;
+            color: #C62828;
+            border: 1px solid #FFCDD2;
+            display: block;
+        }
+        
+        .customer-card {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border-left: 5px solid #4CAF50;
+        }
+        
+        .transaction-card {
+            background: #f8f9fa;
+            padding: 18px;
+            margin: 12px 0;
+            border-radius: 10px;
+            border-left: 5px solid;
+        }
+        
+        .transaction-earn { border-left-color: #4CAF50; }
+        .transaction-redeem { border-left-color: #FF9800; }
+        
+        .back-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 25px;
+            background: #2196F3;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin: 25px 0;
+        }
+        
+        .stat-card {
+            background: #E3F2FD;
+            padding: 25px 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2.2em;
+            font-weight: 700;
+            color: #1976D2;
+        }
+        
+        .stat-label {
+            color: #546E7A;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏪 จัดการระบบคะแนนลูกค้า</h1>
+        <p>เพิ่มคะแนน แลกสิทธิพิเศษ ดูรายงาน</p>
+    </div>
+    
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('add')">➕ เพิ่มคะแนน</button>
+            <button class="tab" onclick="showTab('redeem')">🎁 แลกสิทธิพิเศษ</button>
+            <button class="tab" onclick="showTab('customers')">👥 ลูกค้าทั้งหมด</button>
+            <button class="tab" onclick="showTab('transactions')">📈 ประวัติธุรกรรม</button>
+            <button class="tab" onclick="showTab('stats')">📊 สถิติ</button>
+        </div>
+        
+        <!-- แท็บ 1: เพิ่มคะแนน -->
+        <div id="add" class="tab-content active">
+            <h2>➕ เพิ่มคะแนนจากยอดซื้อ</h2>
+            <div class="input-group">
+                <input type="text" id="phone" placeholder="เบอร์โทรลูกค้า (เช่น 0812345678)" required>
+                <input type="number" id="amount" placeholder="ยอดซื้อ (บาท)" step="0.01" min="1" required>
+                <button class="btn" onclick="addPoints()">เพิ่มคะแนน</button>
+            </div>
+            <div id="resultAdd" class="result"></div>
+        </div>
+        
+        <!-- แท็บ 2: แลกสิทธิพิเศษ -->
+        <div id="redeem" class="tab-content">
+            <h2>🎁 แลกสิทธิพิเศษ</h2>
+            <div class="input-group">
+                <input type="text" id="redeemPhone" placeholder="เบอร์โทรลูกค้า" required>
+                <select id="privilegeSelect">
+                    <option value="">เลือกรับสิทธิพิเศษ...</option>
+                </select>
+                <button class="btn" onclick="redeemPoints()">แลกสิทธิพิเศษ</button>
+            </div>
+            <div id="resultRedeem" class="result"></div>
+        </div>
+        
+        <!-- แท็บ 3: ลูกค้าทั้งหมด -->
+        <div id="customers" class="tab-content">
+            <h2>👥 ลูกค้าทั้งหมด</h2>
+            <input type="text" id="searchCustomer" placeholder="🔍 ค้นหาด้วยชื่อหรือเบอร์โทร..." 
+                   oninput="searchCustomers()" style="margin-bottom: 20px;">
+            <div id="customerList"></div>
+        </div>
+        
+        <!-- แท็บ 4: ประวัติธุรกรรม -->
+        <div id="transactions" class="tab-content">
+            <h2>📈 ประวัติธุรกรรม</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="searchTransaction" placeholder="🔍 ค้นหาด้วยเบอร์โทร..." 
+                       oninput="searchTransactions()" style="flex: 3;">
+                <select id="transactionType" onchange="searchTransactions()" style="flex: 1;">
+                    <option value="">ทั้งหมด</option>
+                    <option value="earn">เพิ่มคะแนน</option>
+                    <option value="redeem">แลกคะแนน</option>
+                </select>
+            </div>
+            <div id="transactionList"></div>
+        </div>
+        
+        <!-- แท็บ 5: สถิติ -->
+        <div id="stats" class="tab-content">
+            <h2>📊 สถิติระบบ</h2>
+            <div class="stats" id="statsContainer"></div>
+            <h3 style="margin-top: 30px;">📋 ธุรกรรมล่าสุด</h3>
+            <div id="recentTransactions"></div>
+        </div>
+        
+        <a href="index.html" class="back-btn">← กลับไปหน้าแรก</a>
+    </div>
+
+    <script>
+        // ⭐ ตั้งค่า Supabase ของคุณ ⭐
+        const SUPABASE_URL = 'https://ioclbvoguugkdmsvvjhe.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvY2xidm9ndXVna2Rtc3Z2amhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4MjMwMTksImV4cCI6MjA4MjM5OTAxOX0.5Y7hC2k9mdmG-3hysYixOxf8flT9zGZT_vc2qa7ETaE';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // เริ่มต้นเมื่อโหลดหน้า
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ Admin System Ready');
+            loadPrivileges();
+            loadStats();
+        });
+        
+        // แสดงแท็บ
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            if (tabName === 'customers') loadCustomers();
+            if (tabName === 'transactions') loadTransactions();
+            if (tabName === 'stats') loadStats();
+            if (tabName === 'redeem') loadPrivileges();
+        }
+        
+        // เพิ่มคะแนน
+        async function addPoints() {
+            const phone = document.getElementById('phone').value.trim();
+            const amount = parseFloat(document.getElementById('amount').value);
+            
+            if (!phone || !amount || amount <= 0) {
+                showResult('resultAdd', 'กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง', false);
+                return;
+            }
+            
+            try {
+                const { data, error } = await supabase.rpc('add_customer_points', {
+                    p_customer_phone: phone,
+                    p_amount: amount
+                });
+                
+                if (error) throw error;
+                
+                if (data && data.success) {
+                    showResult('resultAdd', 
+                        `✅ ${data.message}<br>
+                         👤 <strong>${data.customer_name}</strong><br>
+                         💰 จำนวนเงิน: <strong>${amount} บาท</strong><br>
+                         ⭐ ได้รับคะแนน: <strong>${data.points_added} แต้ม</strong><br>
+                         📊 คะแนนรวม: <strong>${data.total_points} แต้ม</strong>`, 
+                        true);
+                    
+                    document.getElementById('phone').value = '';
+                    document.getElementById('amount').value = '';
+                } else {
+                    showResult('resultAdd', '❌ ' + (data?.message || 'ไม่สำเร็จ'), false);
+                }
+            } catch (err) {
+                showResult('resultAdd', '❌ เกิดข้อผิดพลาด: ' + err.message, false);
+            }
+        }
+        
+        // โหลดสิทธิพิเศษ
+        async function loadPrivileges() {
+            try {
+                const { data, error } = await supabase
+                    .from('privileges')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('points_required');
+                
+                if (error) throw error;
+                
+                const select = document.getElementById('privilegeSelect');
+                select.innerHTML = '<option value="">เลือกรับสิทธิพิเศษ...</option>';
+                
+                data.forEach(priv => {
+                    const option = document.createElement('option');
+                    option.value = priv.id;
+                    option.textContent = `${priv.name} (${priv.points_required} คะแนน)`;
+                    select.appendChild(option);
+                });
+            } catch (err) {
+                console.error('Error loading privileges:', err);
+            }
+        }
+        
+        // แลกคะแนน
+        async function redeemPoints() {
+            const phone = document.getElementById('redeemPhone').value.trim();
+            const privilegeId = document.getElementById('privilegeSelect').value;
+            
+            if (!phone || !privilegeId) {
+                showResult('resultRedeem', 'กรุณากรอกข้อมูลให้ครบถ้วน', false);
+                return;
+            }
+            
+            try {
+                const { data, error } = await supabase.rpc('redeem_customer_points', {
+                    p_customer_phone: phone,
+                    p_privilege_id: privilegeId
+                });
+                
+                if (error) throw error;
+                
+                if (data && data.success) {
+                    showResult('resultRedeem', 
+                        `✅ ${data.message}<br>
+                         👤 <strong>${data.customer_name}</strong><br>
+                         🎁 สิทธิพิเศษ: <strong>${data.privilege_name}</strong><br>
+                         ⭐ ใช้คะแนน: <strong>${data.points_redeemed} แต้ม</strong><br>
+                         📊 คะแนนคงเหลือ: <strong>${data.remaining_points} แต้ม</strong>`, 
+                        true);
+                    
+                    document.getElementById('redeemPhone').value = '';
+                    document.getElementById('privilegeSelect').value = '';
+                } else {
+                    showResult('resultRedeem', '❌ ' + (data?.message || 'ไม่สำเร็จ'), false);
+                }
+            } catch (err) {
+                showResult('resultRedeem', '❌ เกิดข้อผิดพลาด: ' + err.message, false);
+            }
+        }
+        
+        // โหลดข้อมูลลูกค้า
+        async function loadCustomers() {
+            try {
+                const { data, error } = await supabase
+                    .from('customers')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                displayCustomers(data);
+            } catch (err) {
+                document.getElementById('customerList').innerHTML = 
+                    '<div class="error">❌ เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
+            }
+        }
+        
+        // ค้นหาลูกค้า
+        async function searchCustomers() {
+            const search = document.getElementById('searchCustomer').value.toLowerCase();
+            
+            try {
+                const { data, error } = await supabase
+                    .from('customers')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                const filtered = data.filter(customer => 
+                    customer.first_name?.toLowerCase().includes(search) ||
+                    customer.last_name?.toLowerCase().includes(search) ||
+                    customer.phone?.includes(search)
+                );
+                
+                displayCustomers(filtered);
+            } catch (err) {
+                console.error('Search error:', err);
+            }
+        }
+        
+        // แสดงข้อมูลลูกค้า
+        function displayCustomers(customers) {
+            let html = '';
+            
+            if (customers && customers.length > 0) {
+                customers.forEach(customer => {
+                    html += `
+                        <div class="customer-card">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div>
+                                    <strong style="font-size: 1.2em;">${customer.first_name} ${customer.last_name}</strong>
+                                    <div style="color: #666; margin: 5px 0;">📱 ${customer.phone || 'ไม่มีเบอร์โทร'}</div>
+                                    <div>🆔 บัตร: ${customer.card_number || 'ไม่มี'}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 1.5em; color: #4CAF50; font-weight: 700;">
+                                        ${customer.points}
+                                    </div>
+                                    <div style="color: #666; font-size: 0.9em;">คะแนน</div>
+                                </div>
+                            </div>
+                            <div style="color: #888; font-size: 0.9em; margin-top: 10px;">
+                                📅 สมัคร: ${new Date(customer.created_at).toLocaleDateString('th-TH')}
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                html = '<div style="text-align: center; padding: 40px; color: #666;">ไม่พบข้อมูลลูกค้า</div>';
+            }
+            
+            document.getElementById('customerList').innerHTML = html;
+        }
+        
+        // โหลดประวัติธุรกรรม
+        async function loadTransactions() {
+            try {
+                const { data, error } = await supabase
+                    .from('transactions')
+                    .select(`
+                        *,
+                        customers (first_name, last_name, phone)
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+                
+                if (error) throw error;
+                
+                displayTransactions(data);
+            } catch (err) {
+                document.getElementById('transactionList').innerHTML = 
+                    '<div class="error">❌ เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
+            }
+        }
+        
+        // ค้นหาธุรกรรม
+        async function searchTransactions() {
+            const search = document.getElementById('searchTransaction').value;
+            const type = document.getElementById('transactionType').value;
+            
+            try {
+                let query = supabase
+                    .from('transactions')
+                    .select(`
+                        *,
+                        customers (first_name, last_name, phone)
+                    `)
+                    .order('created_at', { ascending: false });
+                
+                if (type) {
+                    query = query.eq('type', type);
+                }
+                
+                const { data, error } = await query;
+                
+                if (error) throw error;
+                
+                const filtered = search ? data.filter(t => 
+                    t.customers && t.customers.phone && t.customers.phone.includes(search)
+                ) : data;
+                
+                displayTransactions(filtered);
+            } catch (err) {
+                console.error('Search transactions error:', err);
+            }
+        }
+        
+        // แสดงธุรกรรม
+        function displayTransactions(transactions) {
+            let html = '';
+            
+            if (transactions && transactions.length > 0) {
+                transactions.forEach(t => {
+                    const customerName = t.customers ? 
+                        `${t.customers.first_name} ${t.customers.last_name}` : 'ไม่ทราบ';
+                    const phone = t.customers ? t.customers.phone : 'ไม่ทราบ';
+                    const isEarn = t.type === 'earn';
+                    
+                    html += `
+                        <div class="transaction-card ${isEarn ? 'transaction-earn' : 'transaction-redeem'}">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div>
+                                    <strong>${isEarn ? '➕ เพิ่มคะแนน' : '🎁 แลกคะแนน'}</strong>
+                                    <div style="color: #666; font-size: 0.9em;">👤 ${customerName} (${phone})</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 1.3em; font-weight: 700; color: ${isEarn ? '#4CAF50' : '#FF9800'}">
+                                        ${isEarn ? '+' : '-'}${isEarn ? t.points_earned : t.points_redeemed}
+                                    </div>
+                                    <div style="color: #666; font-size: 0.8em;">คะแนน</div>
+                                </div>
+                            </div>
+                            <div style="color: #666;">📝 ${t.description || 'ไม่มีรายละเอียด'}</div>
+                            <div style="color: #888; font-size: 0.85em; margin-top: 8px;">
+                                📅 ${new Date(t.created_at).toLocaleString('th-TH')}
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                html = '<div style="text-align: center; padding: 40px; color: #666;">ไม่พบข้อมูลธุรกรรม</div>';
+            }
+            
+            document.getElementById('transactionList').innerHTML = html;
+        }
+        
+        // โหลดสถิติ
+        async function loadStats() {
+            try {
+                const { data: customers } = await supabase.from('customers').select('points');
+                const { data: transactions } = await supabase.from('transactions').select('*');
+                const { data: recent } = await supabase
+                    .from('transactions')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+                
+                // คำนวณสถิติ
+                const totalCustomers = customers?.length || 0;
+                const totalPoints = customers?.reduce((sum, c) => sum + (c.points || 0), 0) || 0;
+                const avgPoints = totalCustomers > 0 ? Math.round(totalPoints / totalCustomers) : 0;
+                const totalTransactions = transactions?.length || 0;
+                
+                // แสดงสถิติ
+                const statsHtml = `
+                    <div class="stat-card">
+                        <div class="stat-value">${totalCustomers}</div>
+                        <div class="stat-label">👥 ลูกค้าทั้งหมด</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${totalPoints}</div>
+                        <div class="stat-label">⭐ คะแนนรวม</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${avgPoints}</div>
+                        <div class="stat-label">📊 คะแนนเฉลี่ย</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${totalTransactions}</div>
+                        <div class="stat-label">📈 ธุรกรรม</div>
+                    </div>
+                `;
+                
+                document.getElementById('statsContainer').innerHTML = statsHtml;
+                
+                // แสดงธุรกรรมล่าสุด
+                let recentHtml = '';
+                if (recent && recent.length > 0) {
+                    recent.forEach(t => {
+                        recentHtml += `
+                            <div style="padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+                                <div>
+                                    <div>${t.description?.substring(0, 30)}${t.description?.length > 30 ? '...' : ''}</div>
+                                    <div style="font-size: 0.85em; color: #888;">
+                                        ${new Date(t.created_at).toLocaleDateString('th-TH')}
+                                    </div>
+                                </div>
+                                <div style="color: ${t.type === 'earn' ? '#4CAF50' : '#FF9800'}; font-weight: 500;">
+                                    ${t.type === 'earn' ? '+' : '-'}${t.type === 'earn' ? t.points_earned : t.points_redeemed}
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    recentHtml = '<div style="text-align: center; padding: 20px; color: #666;">ไม่มีธุรกรรมล่าสุด</div>';
+                }
+                
+                document.getElementById('recentTransactions').innerHTML = recentHtml;
+            } catch (err) {
+                console.error('Error loading stats:', err);
+            }
+        }
+        
+        // แสดงผลลัพธ์
+        function showResult(elementId, message, isSuccess) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            element.className = 'result ' + (isSuccess ? 'success' : 'error');
+            
+            setTimeout(() => {
+                element.innerHTML = '';
+                element.className = 'result';
+            }, 5000);
+        }
+    </script>
+</body>
+  </html>

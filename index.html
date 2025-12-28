@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM ระบบคะแนนลูกค้า</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Prompt', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 500px; margin: 50px auto; background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%); color: white; padding: 40px 30px; text-align: center; }
+        h1 { font-weight: 600; font-size: 1.8em; margin-bottom: 10px; }
+        .subtitle { opacity: 0.9; font-weight: 300; }
+        .content { padding: 30px; }
+        .btn { display: block; width: 100%; background: #2196F3; color: white; text-decoration: none; text-align: center; padding: 18px; margin: 15px 0; border-radius: 10px; font-weight: 500; font-size: 1.1em; transition: all 0.3s; border: none; cursor: pointer; }
+        .btn:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(33, 150, 243, 0.3); }
+        .btn-admin { background: linear-gradient(135deg, #4CAF50, #2E7D32); }
+        .btn-customer { background: linear-gradient(135deg, #2196F3, #0D47A1); }
+        .btn-test { background: linear-gradient(135deg, #9C27B0, #7B1FA2); }
+        .test-result { margin-top: 20px; padding: 15px; border-radius: 10px; display: none; }
+        .success { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
+        .error { background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏪 ระบบ CRM จัดการคะแนน</h1>
+            <p class="subtitle">ระบบจัดการคะแนนสะสมสำหรับลูกค้า</p>
+        </div>
+        
+        <div class="content">
+            <a href="admin.html" class="btn btn-admin">
+                🏪 หน้า Admin (เจ้าของร้าน/พนักงาน)
+            </a>
+            
+            <a href="customer.html" class="btn btn-customer">
+                👤 หน้าลูกค้า (ดูคะแนนและสิทธิพิเศษ)
+            </a>
+            
+            <button onclick="testSystem()" class="btn btn-test">
+                🔍 ทดสอบระบบ
+            </button>
+            
+            <div id="testResult" class="test-result"></div>
+        </div>
+        
+        <div class="footer">
+            <p>ระบบ CRM แลกคะแนน © 2024</p>
+        </div>
+    </div>
+
+    <script>
+        async function testSystem() {
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<p>กำลังทดสอบระบบ...</p>';
+            
+            try {
+                // ตรวจสอบไฟล์
+                const files = ['admin.html', 'customer.html'];
+                let allExist = true;
+                
+                for (let file of files) {
+                    const response = await fetch(file);
+                    if (!response.ok) allExist = false;
+                }
+                
+                if (allExist) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ ระบบพร้อมใช้งาน!<br>
+                            <small>สามารถใช้ระบบได้ทันที</small>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            ❌ พบปัญหา!<br>
+                            <small>กรุณาตรวจสอบไฟล์ admin.html และ customer.html</small>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ เกิดข้อผิดพลาด<br>
+                        <small>${err.message}</small>
+                    </div>
+                `;
+            }
+            
+            setTimeout(() => {
+                resultDiv.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

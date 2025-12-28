@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>คะแนนสมาชิก</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        * { font-family: 'Prompt', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f5f5f5; padding-bottom: 80px; }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #2196F3);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.3;
+        }
+        
+        .store-name {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            font-weight: 500;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .points-display {
+            font-size: 3.5em;
+            font-weight: 700;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            background: white;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
+            z-index: 1000;
+            padding: 5px;
+        }
+        
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 15px 5px;
+            color: #666;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .nav-item.active {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .nav-icon {
+            font-size: 1.6em;
+        }
+        
+        .nav-label {
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        
+        /* Pages */
+        .page {
+            display: none;
+            animation: fadeIn 0.4s;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Cards */
+        .card {
+            background: white;
+            margin: 20px;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        
+        /* QR Code */
+        .qr-container {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        #qrCode {
+            width: 280px;
+            height: 280px;
+            margin: 20px auto;
+            border: 3px solid #4CAF50;
+            border-radius: 15px;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.2);
+        }
+        
+        #qrTimer {
+            font-size: 1.3em;
+            color: #2196F3;
+            margin-top: 20px;
+            font-weight: 600;
+            padding: 12px 25px;
+            background: #E3F2FD;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        
+        /* History */
+        .history-item {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s;
+        }
+        
+        .history-item:hover {
+            background: #f9f9f9;
+        }
+        
+        .history-earn { color: #4CAF50; }
+        .history-redeem { color: #FF9800; }
+        
+        /* Buttons */
+        .action-btn {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+            font-size: 1em;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+            transition: all 0.3s;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.3);
+        }
+        
+        /* Privilege Cards */
+        .privilege-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+            transition: all 0.3s;
+        }
+        
+        .privilege-card.can-redeem {
+            border-color: #4CAF50;
+            background: #F1F8E9;
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.15);
+        }
+        
+        .privilege-card.cannot-redeem {
+            opacity: 0.7;
+        }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        
+        .back-home {
+            display: block;
+            text-align: center;
+            margin: 30px 20px;
+            padding: 15px;
+            background: #9C27B0;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="store-name">🏪 ร้านตัวอย่าง</div>
+        <div class="points-display" id="totalPoints">150</div>
+        <div style="position: relative; z-index: 1;">คะแนนสะสม</div>
+    </div>
+    
+    <!-- หน้า 1: หน้าแรก -->
+    <div id="page-home" class="page active">
+        <div class="card">
+            <h2 style="color: #333; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                🆔 บัตรสมาชิก
+            </h2>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <div style="font-size: 1.1em; color: #666; margin-bottom: 10px;">หมายเลขบัตรสมาชิก</div>
+                <div id="cardNumber" style="font-size: 2em; font-weight: 700; color: #333; letter-spacing: 2px;">
+                    CARD001
+                </div>
+            </div>
+            <button class="action-btn" onclick="copyCardNumber()">
+                📋 คัดลอกหมายเลขบัตร
+            </button>
+        </div>
+        
+        <div class="card">
+            <h2 style="color: #333; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                🎁 สิทธิพิเศษแนะนำ
+            </h2>
+            <div id="featuredPrivileges" class="loading">กำลังโหลด...</div>
+        </div>
+    </div>
+    
+    <!-- หน้า 2: สิทธิพิเศษ -->
+    <div id="page-privileges" class="page">
+        <div class="card">
+            <h2 style="color: #333; margin-bottom: 25px; display: flex; align-items: center; gap: 10px;">
+                🎁 สิทธิพิเศษทั้งหมด
+            </h2>
+            <div id="allPrivileges" class="loading">กำลังโหลด...</div>
+        </div>
+    </div>
+    
+    <!-- หน้า 3: สแกน QR -->
+    <div id="page-scan" class="page">
+        <div class="qr-container">
+            <h2 style="color: #333; margin-bottom: 20px;">📱 สแกนรับคะแนน</h2>
+            <p style="color: #666; margin-bottom: 30px;">นำโทรศัพท์สแกน QR Code นี้ที่ร้านเพื่อรับคะแนน</p>
+            <div id="qrCode" class="loading">
+                กำลังสร้าง QR Code...
+            </div>
+            <div id="qrTimer">⏳ กำลังโหลด...</div>
+            <p style="color: #888; margin-top: 30px; font-size: 0.9em;">
+                QR Code จะอัพเดทใหม่ทุก 10 นาที
+            </p>
+        </div>
+    </div>
+    
+    <!-- หน้า 4: ประวัติ -->
+    <div id="page-history" class="page">
+        <div class="card">
+            <h2 style="color: #333; margin-bottom: 25px; display: flex; align-items: center; gap: 10px;">
+                📜 ประวัติคะแนน
+            </h2>
+            <div id="historyList" class="loading">กำลังโหลดประวัติ...</div>
+        </div>
+    </div>
+    
+    <!-- หน้า 5: ข้อมูลส่วนตัว -->
+    <div id="page-profile" class="page">
+        <div class="card">
+            <h2 style="color: #333; margin-bottom: 25px; display: flex; align-items: center; gap: 10px;">
+                👤 ข้อมูลส่วนตัว
+            </h2>
+            <div style="background: #f8f9fa; padding: 25px; border-radius: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <div style="color: #666; font-size: 0.9em; margin-bottom: 5px;">ชื่อ-นามสกุล</div>
+                        <div id="customerName" style="font-weight: 600; font-size: 1.2em;">สมชาย ตัวอย่าง</div>
+                    </div>
+                    <div>
+                        <div style="color: #666; font-size: 0.9em; margin-bottom: 5px;">เบอร์โทรศัพท์</div>
+                        <div id="customerPhone" style="font-weight: 600; font-size: 1.2em;">0812345678</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <div style="color: #666; font-size: 0.9em; margin-bottom: 5px;">คะแนนสะสม</div>
+                        <div id="customerPoints" style="font-weight: 700; font-size: 1.5em; color: #4CAF50;">150</div>
+                    </div>
+                    <div>
+                        <div style="color: #666; font-size: 0.9em; margin-bottom: 5px;">บัตรสมาชิก</div>
+                        <div id="customerCard" style="font-weight: 600; font-size: 1.2em;">CARD001</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <button class="action-btn" onclick="refreshData()" style="background: #FF9800;">
+                    🔄 รีเฟรชข้อมูล
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <a class="nav-item active" onclick="showPage('home')">
+            <div class="nav-icon">🏠</div>
+            <div class="nav-label">หน้าแรก</div>
+        </a>
+        <a class="nav-item" onclick="showPage('privileges')">
+            <div class="nav-icon">🎁</div>
+            <div class="nav-label">สิทธิพิเศษ</div>
+        </a>
+        <a class="nav-item" onclick="showPage('scan')">
+            <div class="nav-icon">📱</div>
+            <div class="nav-label">สแกน</div>
+        </a>
+        <a class="nav-item" onclick="showPage('history')">
+            <div class="nav-icon">📜</div>
+            <div class="nav-label">ประวัติ</div>
+        </a>
+        <a class="nav-item" onclick="showPage('profile')">
+            <div class="nav-icon">👤</div>
+            <div class="nav-label">ฉัน</div>
+        </a>
+    </div>
+    
+    <a href="index.html" class="back-home">← กลับไปหน้าแรก</a>
+
+    <script>
+        // ตั้งค่า Supabase
+        const SUPABASE_URL = 'https://ioclbvoguugkdmsvvjhe.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvY2xidm9ndXVna2Rtc3Z2amhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4MjMwMTksImV4cCI6MjA4MjM5OTAxOX0.5Y7hC2k9mdmG-3hysYixOxf8flT9zGZT_vc2qa7ETaE';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // ข้อมูลลูกค้า (สำหรับตัวอย่าง)
+        let currentCustomer = {
+            name: "สมชาย ตัวอย่าง",
+            phone: "0812345678",
+            points: 150,
+            card: "CARD001"
+        };
+        
+        // เมื่อโหลดหน้า
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ Customer App Ready');
+            updateCustomerDisplay();
+            loadFeaturedPrivileges();
+            loadAllPrivileges();
+            loadHistory();
+            updateQRCode();
+            
+            // อัพเดท QR ทุกนาที
+            setInterval(updateQRCode, 60000);
+        });
+        
+        // แสดงหน้า
+        function showPage(pageName) {
+            // ซ่อนทั้งหมด
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            
+            // แสดงหน้าที่เลือก
+            document.getElementById(`page-${pageName}`).classList.add('active');
+            
+            // อัพเดท navigation
+            const pages = ['home', 'privileges', 'scan', 'history', 'profile'];
+            const index = pages.indexOf(pageName);
+            document.querySelectorAll('.nav-item')[index].classList.add('active');
+            
+            // โหลดข้อมูลตามหน้า
+            if (pageName === 'scan') {
+                updateQRCode();
+            } else if (pageName === 'privileges') {
+                loadAllPrivileges();
+            } else if (pageName === 'history') {
+                loadHistory();
+            }
+        }
+        
+        // อัพเดทข้อมูลลูกค้า
+        function updateCustomerDisplay() {
+            document.getElementById('totalPoints').textContent = currentCustomer.points;
+            document.getElementById('customerPoints').textContent = currentCustomer.points;
+            document.getElementById('customerName').textContent = currentCustomer.name;
+            document.getElementById('customerPhone').textContent = currentCustomer.phone;
+            document.getElementById('customerCard').textContent = currentCustomer.card;
+            document.getElementById('cardNumber').textContent = currentCustomer.card;
+        }
+        
+        // โหลดสิทธิพิเศษแนะนำ
+        async function loadFeaturedPrivileges() {
+            try {
+                const { data, error } = await supabase
+                    .from('privileges')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('points_required')
+                    .limit(3);
+                
+                if (error) throw error;
+                
+                let html = '';
+                if (data && data.length > 0) {
+                    data.forEach(priv => {
+                        const canRedeem = currentCustomer.points >= priv.points_required;
+                        html += `
+                            <div class="privilege-card ${canRedeem ? 'can-redeem' : 'cannot-redeem'}">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                                    <div>
+                                        <div style="font-size: 1.2em; font-weight: 600; color: #333;">${priv.name}</div>
+                                        <div style="color: #666; margin-top: 8px;">${priv.description}</div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 1.5em; font-weight: 700; color: #4CAF50;">
+                                            ${priv.points_required}
+                                        </div>
+                                        <div style="color: #666; font-size: 0.9em;">คะแนน</div>
+                                    </div>
+                                </div>
+                                ${canRedeem ? 
+                                    '<div style="color: #388E3C; font-weight: 500; padding: 10px; background: #C8E6C9; border-radius: 8px; text-align: center;">✓ พอคะแนนแลกได้</div>' : 
+                                    '<div style="color: #F44336; font-weight: 500; padding: 10px; background: #FFCDD2; border-radius: 8px; text-align: center;">❌ ต้องการอีก ' + (priv.points_required - currentCustomer.points) + ' คะแนน</div>'
+                                }
+                            </div>
+                        `;
+                    });
+                } else {
+                    html = '<div style="text-align: center; padding: 30px; color: #666;">ไม่มีสิทธิพิเศษในขณะนี้</div>';
+                }
+                
+                document.getElementById('featuredPrivileges').innerHTML = html;
+            } catch (err) {
+                console.error('Error loading privileges:', err);
+                document.getElementById('featuredPrivileges').innerHTML = 
+                    '<div style="color: #f44336; text-align: center;">ไม่สามารถโหลดข้อมูลได้</div>';
+            }
+        }
+        
+        // โหลดสิทธิพิเศษทั้งหมด
+        async function loadAllPrivileges() {
+            try {
+                const { data, error } = await supabase
+                    .from('privileges')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('points_required');
+                
+                if (error) throw error;
+                
+                let html = '';
+                if (data && data.length > 0) {
+                    data.forEach(priv => {
+                        const canRedeem = currentCustomer.points >= priv.points_required;
+                        html += `
+                            <div class="privilege-card ${canRedeem ? 'can-redeem' : 'cannot-redeem'}">
+                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                    <div style="flex: 1;">
+                                        <div style="font-size: 1.3em; font-weight: 600; color: #333; margin-bottom: 10px;">${priv.name}</div>
+                                        <div style="color: #666; line-height: 1.5;">${priv.description}</div>
+                                    </div>
+                                    <div style="text-align: right; margin-left: 20px;">
+                                        <div style="font-size: 1.8em; font-weight: 700; color: #4CAF50; margin-bottom: 5px;">
+                                            ${priv.points_required}
+                                        </div>
+                                        <div style="color: #666; font-size: 0.9em;">คะแนน</div>
+                                        ${canRedeem ? 
+                                            '<div style="color: #388E3C; font-weight: 500; margin-top: 10px; padding: 8px 15px; background: #C8E6C9; border-radius: 20px; font-size: 0.9em;">แลกได้</div>' : 
+                                            '<div style="color: #F44336; font-weight: 500; margin-top: 10px; padding: 8px 15px; background: #FFCDD2; border-radius: 20px; font-size: 0.9em;">คะแนนไม่พอ</div>'
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html = '<div style="text-align: center; padding: 50px; color: #666;">ไม่มีสิทธิพิเศษในขณะนี้</div>';
+                }
+                
+                document.getElementById('allPrivileges').innerHTML = html;
+            } catch (err) {
+                console.error('Error loading all privileges:', err);
+                document.getElementById('allPrivileges').innerHTML = 
+                    '<div style="color: #f44336; text-align: center;">ไม่สามารถโหลดข้อมูลได้</div>';
+            }
+        }
+        
+        // อัพเดท QR Code
+        async function updateQRCode() {
+            try {
+                document.getElementById('qrCode').innerHTML = '<div class="loading">กำลังสร้าง QR Code...</div>';
+                document.getElementById('qrTimer').textContent = '⏳ กำลังโหลด...';
+                
+                const { data, error } = await supabase.rpc('get_or_create_qr');
+                
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    const qr = data[0];
+                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(qr.qr_code)}`;
+                    
+                    document.getElementById('qrCode').innerHTML = 
+                        `<img src="${qrUrl}" alt="QR Code" style="width: 100%; height: 100%; border-radius: 10px;">`;
+                    
+                    startCountdown(qr.expires_at);
+                }
+            } catch (err) {
+                document.getElementById('qrCode').innerHTML = 
+                    '<div style="text-align: center; padding: 50px; color: #f44336;">⚠️ ไม่สามารถโหลด QR Code ได้</div>';
+                document.getElementById('qrTimer').textContent = '❌ เกิดข้อผิดพลาด';
+                console.error('QR Error:', err);
+            }
+        }
+        
+        // นับถอยหลัง QR
+        function startCountdown(expiresAt) {
+            const expiry = new Date(expiresAt);
+            
+            function updateTimer() {
+                const now = new Date();
+                const diff = expiry - now;
+                
+                if (diff <= 0) {
+                    document.getElementById('qrTimer').textContent = '🔄 กำลังสร้าง QR ใหม่...';
+                    document.getElementById('qrTimer').style.background = '#FFEBEE';
+                    document.getElementById('qrTimer').style.color = '#C62828';
+                    setTimeout(updateQRCode, 2000);
+                    return;
+                }
+                
+                const minutes = Math.floor(diff / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+                
+                document.getElementById('qrTimer').textContent = 
+                    `⏰ หมดอายุใน: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (minutes < 2) {
+                    document.getElementById('qrTimer').style.background = '#FFF3E0';
+                    document.getElementById('qrTimer').style.color = '#EF6C00';
+                } else {
+                    document.getElementById('qrTimer').style.background = '#E3F2FD';
+                    document.getElementById('qrTimer').style.color = '#1976D2';
+                }
+            }
+            
+            updateTimer();
+            setInterval(updateTimer, 1000);
+        }
+        
+        // โหลดประวัติ
+        async function loadHistory() {
+            try {
+                document.getElementById('historyList').innerHTML = '<div class="loading">กำลังโหลดประวัติ...</div>';
+                
+                // ดึงข้อมูลลูกค้า (สำหรับตัวอย่างใช้เบอร์ 0812345678)
+                const { data: customer, error: customerError } = await supabase
+                    .from('customers')
+                    .select('id')
+                    .eq('phone', '0812345678')
+                    .single();
+                
+                if (customerError) throw customerError;
+                
+                const { data: transactions, error: transError } = await supabase
+                    .from('transactions')
+                    .select('*')
+                    .eq('customer_id', customer.id)
+                    .order('created_at', { ascending: false });
+                
+                if (transError) throw transError;
+                
+                let html = '';
+                if (transactions && transactions.length > 0) {
+                    transactions.forEach(t => {
+                        const isEarn = t.type === 'earn';
+                        const amount = t.amount ? ` • ${t.amount} บาท` : '';
+                        
+                        html += `
+                            <div class="history-item">
+                                <div>
+                                    <div style="font-weight: 600; color: #333; margin-bottom: 5px;">
+                                        ${isEarn ? '➕ รับคะแนน' : '🎁 แลกคะแนน'}${amount}
+                                    </div>
+                                    <div style="color: #666; font-size: 0.9em; margin-bottom: 5px;">
+                                        ${t.description || 'ไม่ระบุรายละเอียด'}
+                                    </div>
+                                    <div style="color: #888; font-size: 0.85em;">
+                                        📅 ${new Date(t.created_at).toLocaleString('th-TH')}
+                                    </div>
+                                </div>
+                                <div class="${isEarn ? 'history-earn' : 'history-redeem'}" style="font-size: 1.4em; font-weight: 700;">
+                                    ${isEarn ? '+' : '-'}${isEarn ? t.points_earned : t.points_redeemed}
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html = `
+                        <div style="text-align: center; padding: 50px;">
+                            <div style="font-size: 3em; color: #ddd; margin-bottom: 20px;">📭</div>
+                            <div style="color: #666;">ไม่มีประวัติการใช้งาน</div>
+                            <div style="color: #999; font-size: 0.9em; margin-top: 10px;">ทำรายการครั้งแรกเพื่อดูประวัติ</div>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('historyList').innerHTML = html;
+            } catch (err) {
+                console.error('Error loading history:', err);
+                document.getElementById('historyList').innerHTML = 
+                    '<div style="color: #f44336; text-align: center; padding: 40px;">⚠️ ไม่สามารถโหลดประวัติได้</div>';
+            }
+        }
+        
+        // คัดลอกหมายเลขบัตร
+        function copyCardNumber() {
+            navigator.clipboard.writeText(currentCustomer.card)
+                .then(() => {
+                    alert('✅ คัดลอกหมายเลขบัตรแล้ว!');
+                })
+                .catch(err => {
+                    console.error('Copy failed:', err);
+                    alert('❌ ไม่สามารถคัดลอกได้');
+                });
+        }
+        
+        // รีเฟรชข้อมูล
+        function refreshData() {
+            updateCustomerDisplay();
+            loadFeaturedPrivileges();
+            loadAllPrivileges();
+            loadHistory();
+            
+            // แจ้งเตือน
+            alert('🔄 รีเฟรชข้อมูลเรียบร้อยแล้ว');
+        }
+    </script>
+</body>
+</html>
